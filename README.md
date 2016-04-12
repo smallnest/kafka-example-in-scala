@@ -26,7 +26,18 @@ mvn clean package
 
 it will package compiled classes and its dependencies into a jar.
 
-### run the consumer
+### Run the Producer
+This example also contains two producers written in Java and in scala.
+you can run this for java:
+``` sh
+java -cp kafka_example-0.1.0-SNAPSHOT.jar com.colobu.kafka.ProducerExample 10000 test_topic localhost:9092
+```
+or this for scala
+``` sh
+java -cp kafka_example-0.1.0-SNAPSHOT.jar com.colobu.kafka.ScalaProducerExample 10000 test_topic localhost:9092
+```
+
+### Run the Consumer
 This example contains two consumers written in Java and in scala.
 You can run this for java:
 ``` sh
@@ -38,13 +49,4 @@ or this for scala:
 java -cp kafka_example-0.1.0-SNAPSHOT.jar com.colobu.kafka.ScalaConsumerExample localhost:2181 group1 test_topic 10 0
 ```
 
-### run the consumer
-This example also contains two producers written in Java and in scala.
-you can run this for java:
-``` sh
-java -cp kafka_example-0.1.0-SNAPSHOT.jar com.colobu.kafka.ProducerExample 10000 colobu localhost:9092
-```
-or this for scala
-``` sh
-java -cp kafka_example-0.1.0-SNAPSHOT.jar com.colobu.kafka.ScalaProducerExample 10000 colobu localhost:9092
-```
+
