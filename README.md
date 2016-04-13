@@ -1,3 +1,5 @@
+[![Build Status](https://drone.io/github.com/smallnest/kafka-example-in-scala/status.png)](https://drone.io/github.com/smallnest/kafka-example-in-scala/latest)
+
 kafka producer and consumer example in scala and java
 
 you can test with local server.
