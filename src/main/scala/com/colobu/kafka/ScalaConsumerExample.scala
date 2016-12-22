@@ -1,70 +1,59 @@
 package com.colobu.kafka
 
-import java.util.Properties
 import java.util.concurrent._
-import scala.collection.JavaConversions._
-import kafka.consumer.Consumer
-import kafka.consumer.ConsumerConfig
-import kafka.utils._
-import kafka.utils.Logging
+import java.util.{Collections, Properties}
+
 import kafka.consumer.KafkaStream
+import kafka.utils.Logging
+import org.apache.kafka.clients.consumer.{ConsumerConfig, KafkaConsumer}
 
-class ScalaConsumerExample(val zookeeper: String,
-                            val groupId: String,
-                            val topic: String,
-                            val delay: Long) extends Logging {
+import scala.collection.JavaConversions._
 
-  val config = createConsumerConfig(zookeeper, groupId)
-  val consumer = Consumer.create(config)
+class ScalaConsumerExample(val brokers: String,
+                           val groupId: String,
+                           val topic: String) extends Logging {
+
+  val props = createConsumerConfig(brokers, groupId)
+  val consumer = new KafkaConsumer[String, String](props)
   var executor: ExecutorService = null
 
   def shutdown() = {
     if (consumer != null)
-      consumer.shutdown();
+      consumer.close();
     if (executor != null)
       executor.shutdown();
   }
 
-  def createConsumerConfig(zookeeper: String, groupId: String): ConsumerConfig = {
+  def createConsumerConfig(zookeeper: String, groupId: String): Properties = {
     val props = new Properties()
-    props.put("zookeeper.connect", zookeeper);
-    props.put("group.id", groupId);
-    props.put("auto.offset.reset", "largest");
-    props.put("zookeeper.session.timeout.ms", "400");
-    props.put("zookeeper.sync.time.ms", "200");
-    props.put("auto.commit.interval.ms", "1000");
-    val config = new ConsumerConfig(props)
-    config
+    props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, brokers)
+    props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId)
+    props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true")
+    props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "1000")
+    props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, "30000")
+    props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer")
+    props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer")
+    props
   }
 
-  def run(numThreads: Int) = {
-    val topicCountMap = Map(topic -> numThreads)
-    val consumerMap = consumer.createMessageStreams(topicCountMap);
-    val streams = consumerMap.get(topic).get;
+  def run() = {
+    consumer.subscribe(Collections.singletonList(this.topic))
 
-    executor = Executors.newFixedThreadPool(numThreads);
-    var threadNumber = 0;
-    for (stream <- streams) {
-      executor.submit(new ScalaConsumerTest(stream, threadNumber, delay))
-      threadNumber += 1
-    }
+    Executors.newSingleThreadExecutor.execute(    new Runnable {
+      override def run(): Unit = {
+        while (true) {
+          val records = consumer.poll(1000)
+
+          for (record <- records) {
+            System.out.println("Received message: (" + record.key() + ", " + record.value() + ") at offset " + record.offset())
+          }
+        }
+      }
+    })
   }
 }
 
 object ScalaConsumerExample extends App {
-  val example = new ScalaConsumerExample(args(0), args(1), args(2),args(4).toLong)
-  example.run(args(3).toInt)
-}
-
-class ScalaConsumerTest(val stream: KafkaStream[Array[Byte], Array[Byte]], val threadNumber: Int, val delay: Long) extends Logging with Runnable {
-  def run {
-    val it = stream.iterator()
-
-    while (it.hasNext()) {
-      val msg = new String(it.next().message());
-      System.out.println(System.currentTimeMillis() + ",Thread " + threadNumber + ": " + msg);
-    }
-
-    System.out.println("Shutting down Thread: " + threadNumber);
-  }
+  val example = new ScalaConsumerExample(args(0), args(1), args(2))
+  example.run()
 }

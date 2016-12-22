@@ -1,13 +1,11 @@
 package com.colobu.kafka;
 
-import kafka.consumer.ConsumerConfig;
-import kafka.consumer.KafkaStream;
-import kafka.javaapi.consumer.ConsumerConnector;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.Collections;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -17,79 +15,67 @@ import java.util.concurrent.Executors;
  *
  */
 public class ConsumerExample {
-	private final ConsumerConnector consumer;
+	private final KafkaConsumer<String,String> consumer;
 	private final String topic;
 	private ExecutorService executor;
 	private long delay;
 
-	/**
-	 * 
-	 * @param zookeeper zookeeper连接字符串
-	 * @param groupId 组名
-	 * @param topic topic
-	 */
-	public ConsumerExample(String zookeeper, String groupId, String topic, long delay) {
-		consumer = kafka.consumer.Consumer.createJavaConsumerConnector(createConsumerConfig(zookeeper, groupId));
+
+	public ConsumerExample(Properties props, String topic) {
+		consumer = new KafkaConsumer<>(props);
 		this.topic = topic;
-		this.delay = delay;
 	}
 
 	public void shutdown() {
 		if (consumer != null)
-			consumer.shutdown();
+			consumer.close();
 		if (executor != null)
 			executor.shutdown();
 	}
 
-	/**
-	 * 运行consumer.
-	 * 
-	 * @param numThreads 线程数
-	 */
 	public void run(int numThreads) {
-		
-		//根据topic, thread数得到KafkaStream
-		Map<String, Integer> topicCountMap = new HashMap<String, Integer>();
-		topicCountMap.put(topic, new Integer(numThreads));
-		Map<String, List<KafkaStream<byte[], byte[]>>> consumerMap = consumer.createMessageStreams(topicCountMap);
-		List<KafkaStream<byte[], byte[]>> streams = consumerMap.get(topic);
+		consumer.subscribe(Collections.singletonList(this.topic));
 
-		//提交到线程池中处理
-		executor = Executors.newFixedThreadPool(numThreads);
-		int threadNumber = 0;
-		for (final KafkaStream<byte[], byte[]> stream : streams) {
-			executor.submit(new ConsumerTest(consumer, stream, threadNumber, delay));
-			threadNumber++;
-		}
+		Executors.newSingleThreadExecutor().execute(() -> {
+			while(true) {
+				ConsumerRecords<String, String> records = consumer.poll(1000);
+				for (ConsumerRecord<String, String> record : records) {
+					System.out.println("Received message: (" + record.key() + ", " + record.value() + ") at offset " + record.offset());
+				}
+			}
+		});
+
 	}
 
 	/**
 	 * consumer 配置.
 	 * 
-	 * @param zookeeper zookeeper连接
+	 * @param brokers brokers
 	 * @param groupId 组名
 	 * @return
 	 */
-	private static ConsumerConfig createConsumerConfig(String zookeeper, String groupId) {
+	private static Properties createConsumerConfig(String brokers, String groupId) {
 		Properties props = new Properties();
-		props.put("zookeeper.connect", zookeeper);
-		props.put("auto.offset.reset", "largest");
-		props.put("group.id", groupId);
-		props.put("zookeeper.session.timeout.ms", "400");
-		props.put("zookeeper.sync.time.ms", "200");
-		props.put("auto.commit.interval.ms", "1000");
+		props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, brokers);
+		props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+		props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
+		props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "1000");
+		props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, "30000");
+		props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
+		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
+
 		//props.put("auto.commit.enable", "false");
 		
-		return new ConsumerConfig(props);
+		return props;
 	}
 
 	public static void main(String[] args) throws InterruptedException {
-		String zooKeeper = args[0];
+		String brokers = args[0];
 		String groupId = args[1];
 		String topic = args[2];
 		int threads = Integer.parseInt(args[3]);
-		long delay = Long.parseLong(args[4]);
-		ConsumerExample example = new ConsumerExample(zooKeeper, groupId, topic,delay);
+		Properties props = createConsumerConfig(brokers, groupId);
+		ConsumerExample example = new ConsumerExample(props, topic);
 		example.run(threads);
 
 		Thread.sleep(24*60*60*1000);
