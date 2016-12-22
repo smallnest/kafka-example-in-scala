@@ -33,14 +33,18 @@ public class ConsumerExample {
 			executor.shutdown();
 	}
 
-	public void run(int numThreads) {
+	public void run() {
 		consumer.subscribe(Collections.singletonList(this.topic));
 
 		Executors.newSingleThreadExecutor().execute(() -> {
 			while(true) {
-				ConsumerRecords<String, String> records = consumer.poll(1000);
-				for (ConsumerRecord<String, String> record : records) {
-					System.out.println("Received message: (" + record.key() + ", " + record.value() + ") at offset " + record.offset());
+				try {
+					ConsumerRecords<String, String> records = consumer.poll(1000);
+					for (ConsumerRecord<String, String> record : records) {
+						System.out.println("Received message: (" + record.key() + ", " + record.value() + ") at offset " + record.offset());
+					}
+				}catch(Exception ex) {
+					ex.printStackTrace();
 				}
 			}
 		});
@@ -73,10 +77,9 @@ public class ConsumerExample {
 		String brokers = args[0];
 		String groupId = args[1];
 		String topic = args[2];
-		int threads = Integer.parseInt(args[3]);
 		Properties props = createConsumerConfig(brokers, groupId);
 		ConsumerExample example = new ConsumerExample(props, topic);
-		example.run(threads);
+		example.run();
 
 		Thread.sleep(24*60*60*1000);
 		
