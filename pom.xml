@@ -22,7 +22,7 @@
 		<dependency>
 			<groupId>org.apache.kafka</groupId>
 			<artifactId>kafka_2.11</artifactId>
-			<version>0.10.1.0</version>
+			<version>0.9.0.1</version>
 			<exclusions>
 				<exclusion>
 					<artifactId>jmxri</artifactId>
