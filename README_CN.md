@@ -31,12 +31,12 @@ mvn clean package
 这个例子包含两套代码。
 运行java编写的consumer:
 ``` sh
-java -cp kafka_example-0.1.0-SNAPSHOT.jar com.colobu.kafka.ConsumerExample localhost:2181 group1 test_topic 10 0
+java -cp kafka_example-0.1.0-SNAPSHOT.jar com.colobu.kafka.ConsumerExample localhost:9092 group1 test_topic 10 0
 ```
 
 或者运行scala编写的consumer:
 ``` sh
-java -cp kafka_example-0.1.0-SNAPSHOT.jar com.colobu.kafka.ScalaConsumerExample localhost:2181 group1 test_topic 10 0
+java -cp kafka_example-0.1.0-SNAPSHOT.jar com.colobu.kafka.ScalaConsumerExample localhost:9092 group1 test_topic 10 0
 ```
 
 ### 运行 producer

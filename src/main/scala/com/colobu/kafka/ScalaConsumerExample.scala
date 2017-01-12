@@ -24,7 +24,7 @@ class ScalaConsumerExample(val brokers: String,
       executor.shutdown();
   }
 
-  def createConsumerConfig(zookeeper: String, groupId: String): Properties = {
+  def createConsumerConfig(brokers: String, groupId: String): Properties = {
     val props = new Properties()
     props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, brokers)
     props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId)
